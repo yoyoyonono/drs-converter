@@ -1,3 +1,5 @@
+use xml_builder::{XMLBuilder, XMLElement, XMLVersion, XML};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum NoteEvent {
     LeftStep{lane: u8, width: u8},
@@ -90,10 +92,92 @@ impl Measure {
     }
 }
 
+fn measure_tick_to_ms(measure: u32, tick: u32, bpm: u32) -> u32 {
+    let ms_per_beat = 60000 / bpm;
+    let ms_per_measure = ms_per_beat * 4;
+    let ticks_per_measure = 192;
+    let ms_per_tick = ms_per_measure as f32 / ticks_per_measure as f32;
+    (measure as f32 * ms_per_measure as f32 + tick as f32 * ms_per_tick) as u32
+}
+
+fn ms_to_dt(ms: u32, bpm: u32) -> u32 {
+    (ms as f32 * 0.008 * bpm as f32) as u32
+}
+
+fn xml_boilerplate(bpm: u32) -> XMLElement {
+    let mut xml = XMLElement::new("data");
+    
+    let mut seq_version = XMLElement::new("seq_version");
+    seq_version.add_attribute("__type", "s32");
+    seq_version.add_text("8".into()).unwrap();
+    xml.add_child(seq_version).unwrap();
+
+    let mut info = XMLElement::new("info");
+
+    let mut tick = XMLElement::new("tick");
+    tick.add_attribute("__type", "s32");
+    tick.add_text("480".into()).unwrap();
+    info.add_child(tick).unwrap();
+
+
+    let mut bpm_info = XMLElement::new("bpm_info");
+    let mut bpm_ = XMLElement::new("bpm");
+    let mut time = XMLElement::new("time");
+    time.add_attribute("__type", "s32");
+    time.add_text("0".into()).unwrap();
+    bpm_.add_child(time).unwrap();
+
+    let mut delta_time = XMLElement::new("delta_time");
+    delta_time.add_attribute("__type", "s32");
+    delta_time.add_text("0".into()).unwrap();
+    bpm_.add_child(delta_time).unwrap();
+
+    let mut bpm_value = XMLElement::new("bpm");
+    bpm_value.add_attribute("__type", "s32");
+    bpm_value.add_text(bpm.to_string()).unwrap();
+    bpm_.add_child(bpm_value).unwrap();
+    bpm_info.add_child(bpm_).unwrap();
+    info.add_child(bpm_info).unwrap();
+
+   
+    let mut measure_info = XMLElement::new("measure_info");
+
+    let mut measure = XMLElement::new("measure");
+    let mut measure_time = XMLElement::new("time");
+    measure_time.add_attribute("__type", "s32");
+    measure_time.add_text("0".into()).unwrap();
+    measure.add_child(measure_time).unwrap();
+
+    let mut measure_delta_time = XMLElement::new("delta_time");
+    measure_delta_time.add_attribute("__type", "s32");
+    measure_delta_time.add_text("0".into()).unwrap();
+    measure.add_child(measure_delta_time).unwrap();
+
+    let mut measure_num = XMLElement::new("num");
+    measure_num.add_attribute("__type", "s32");
+    measure_num.add_text("4".into()).unwrap();
+    measure.add_child(measure_num).unwrap();
+
+    let mut measure_denomi = XMLElement::new("denomi");
+    measure_denomi.add_attribute("__type", "s32");
+    measure_denomi.add_text("4".into()).unwrap();
+    measure.add_child(measure_denomi).unwrap();
+    measure_info.add_child(measure).unwrap();
+
+    info.add_child(measure_info).unwrap();
+
+    xml.add_child(info).unwrap();
+
+    xml    
+}
+
 fn main() {
     print!("\x1B[2J\x1B[1;1H");
     let input = std::fs::read_to_string("test.ssf").unwrap();
     let mut input_lines = input.lines();
+
+    let mut bpm = 0;
+
     loop {
         let line_raw = input_lines.next().unwrap();
         if !line_raw.starts_with("#") {
@@ -138,6 +222,7 @@ fn main() {
                 }
                 "BPM01:" => {
                     println!("BPM: {}", argument);
+                    bpm = argument.parse::<u32>().unwrap();
                 }
                 "00008:" => {
                     println!("Padding Bars: {}", argument);
@@ -179,12 +264,27 @@ fn main() {
         }
     } 
 
+    let mut builder = XMLBuilder::new()
+        .version(XMLVersion::XML1_0)
+        .encoding("UTF-8".into())
+        .build();
+
+    let mut data = xml_boilerplate(bpm * 100);
+
+    let mut sequence_data = XMLElement::new("sequence_data");
+
     for (measure_num, measure) in measures.iter().enumerate() {
         for (tick_num, tick) in measure.ticks.iter().enumerate() {
             if tick.len() == 0 {
                 continue;
             }
             println!("Measure: {:?}, Tick: {:?}, Notes: {:?}", measure_num, tick_num, tick);
+            println!("ms: {:?}", measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm));
         }
     }
+
+    builder.set_root_element(data);
+    let mut writer = Vec::<u8>::new();
+    builder.generate(&mut writer).unwrap();
+    std::fs::write("output.xml", writer).unwrap();
 }
