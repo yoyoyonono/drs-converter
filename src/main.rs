@@ -1,4 +1,4 @@
-use xml_builder::{XMLBuilder, XMLElement, XMLVersion, XML};
+use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum NoteEvent {
@@ -137,7 +137,7 @@ fn xml_boilerplate(bpm: u32) -> XMLElement {
     let mut bpm_ = XMLElement::new("bpm");
     add_s32_element(&mut bpm_, "time", 0);
     add_s32_element(&mut bpm_, "delta_time", 0);
-    add_s32_element(&mut bpm_, "bpm", 12000);
+    add_s32_element(&mut bpm_, "bpm", bpm);
     bpm_info.add_child(bpm_).unwrap();
     info.add_child(bpm_info).unwrap();
 
