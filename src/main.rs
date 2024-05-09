@@ -121,10 +121,19 @@ impl NoteEvent {
     }
 }
 
-struct LongPoint {
-    point_time: u32,
-    pos_left: u32,
-    pos_right: u32,
+enum LongPoint {
+    Normal {
+        point_time: u32,
+        pos_left: u32,
+        pos_right: u32,
+    },
+    Skid {
+        point_time: u32,
+        pos_left_start: u32,
+        pos_right_start: u32,
+        pos_left_end: u32,
+        pos_right_end: u32,
+    },
 }
 
 #[derive(Debug)]
@@ -390,7 +399,7 @@ fn main() {
                                         width: end_width,
                                     } => {
                                         if end_id == id {
-                                            waypoints.push(LongPoint {
+                                            waypoints.push(LongPoint::Normal {
                                                 point_time: measure_tick_to_ms(
                                                     measure_num as u32,
                                                     end_tick_num as u32,
@@ -413,7 +422,7 @@ fn main() {
                                         width,
                                     } => {
                                         if id == point_id {
-                                            waypoints.push(LongPoint {
+                                            waypoints.push(LongPoint::Normal {
                                                 point_time: measure_tick_to_ms(
                                                     measure_num as u32,
                                                     end_tick_num as u32,
@@ -424,6 +433,79 @@ fn main() {
                                             });
                                         }
                                     }
+                                    NoteEvent::SimpleSkidEnd {
+                                        id: end_id,
+                                        lane: end_lane,
+                                        width: end_width,
+                                    } => {
+                                        if id == end_id {
+                                            waypoints.push(LongPoint::Skid {
+                                                point_time: measure_tick_to_ms(
+                                                    measure_num as u32,
+                                                    end_tick_num as u32,
+                                                    bpm,
+                                                ),
+                                                pos_left_start: *lane as u32 * 4096,
+                                                pos_right_start: (*lane + width) as u32 * 4096,
+                                                pos_left_end: *end_lane as u32 * 4096,
+                                                pos_right_end: (*end_lane + end_width) as u32
+                                                    * 4096,
+                                            });
+                                            end_time = measure_tick_to_ms(
+                                                measure_num as u32,
+                                                end_tick_num as u32,
+                                                bpm,
+                                            );
+                                            break 'outer;
+                                        }
+                                    }
+                                    NoteEvent::SimpleSkidWaypoint {
+                                        id: point_id,
+                                        lane: point_lane,
+                                        width: point_width,
+                                    } => {
+                                        if id == point_id {
+                                            waypoints.push(LongPoint::Normal {
+                                                point_time: measure_tick_to_ms(
+                                                    measure_num as u32,
+                                                    end_tick_num as u32,
+                                                    bpm,
+                                                ),
+                                                pos_left: *point_lane as u32 * 4096,
+                                                pos_right: (*point_lane + point_width) as u32
+                                                    * 4096,
+                                            });
+                                        }
+                                    }
+                                    NoteEvent::ComplexSkidEnd {
+                                        id: end_id,
+                                        lane_start,
+                                        width_start,
+                                        lane_end,
+                                        width_end,
+                                    } => {
+                                        if id == end_id {
+                                            waypoints.push(LongPoint::Skid {
+                                                point_time: measure_tick_to_ms(
+                                                    measure_num as u32,
+                                                    end_tick_num as u32,
+                                                    bpm,
+                                                ),
+                                                pos_left_start: *lane_start as u32 * 4096,
+                                                pos_right_start: (*lane_start + width_start) as u32
+                                                    * 4096,
+                                                pos_left_end: *lane_end as u32 * 4096,
+                                                pos_right_end: (*lane_end + width_end) as u32
+                                                    * 4096,
+                                            });
+                                            end_time = measure_tick_to_ms(
+                                                measure_num as u32,
+                                                end_tick_num as u32,
+                                                bpm,
+                                            );
+                                            break 'outer;
+                                        }
+                                    }
                                     _ => {}
                                 }
                             }
@@ -431,7 +513,7 @@ fn main() {
 
                         if end_time == time {
                             'outer: for (end_measure_num, end_measure) in
-                                measures.iter().enumerate().skip(measure_num)
+                                measures.iter().enumerate().skip(measure_num + 1)
                             {
                                 for (end_tick_num, end_tick) in end_measure.ticks.iter().enumerate()
                                 {
@@ -443,7 +525,7 @@ fn main() {
                                                 width: end_width,
                                             } => {
                                                 if end_id == id {
-                                                    waypoints.push(LongPoint {
+                                                    waypoints.push(LongPoint::Normal {
                                                         point_time: measure_tick_to_ms(
                                                             end_measure_num as u32,
                                                             end_tick_num as u32,
@@ -467,7 +549,7 @@ fn main() {
                                                 width,
                                             } => {
                                                 if id == point_id {
-                                                    waypoints.push(LongPoint {
+                                                    waypoints.push(LongPoint::Normal {
                                                         point_time: measure_tick_to_ms(
                                                             end_measure_num as u32,
                                                             end_tick_num as u32,
@@ -478,6 +560,85 @@ fn main() {
                                                     });
                                                 }
                                             }
+                                            NoteEvent::SimpleSkidEnd {
+                                                id: end_id,
+                                                lane: end_lane,
+                                                width: end_width,
+                                            } => {
+                                                if id == end_id {
+                                                    waypoints.push(LongPoint::Skid {
+                                                        point_time: measure_tick_to_ms(
+                                                            end_measure_num as u32,
+                                                            end_tick_num as u32,
+                                                            bpm,
+                                                        ),
+                                                        pos_left_start: *lane as u32 * 4096,
+                                                        pos_right_start: (*lane + width) as u32
+                                                            * 4096,
+                                                        pos_left_end: *end_lane as u32 * 4096,
+                                                        pos_right_end: (*end_lane + end_width)
+                                                            as u32
+                                                            * 4096,
+                                                    });
+                                                    end_time = measure_tick_to_ms(
+                                                        end_measure_num as u32,
+                                                        end_tick_num as u32,
+                                                        bpm,
+                                                    );
+                                                    break 'outer;
+                                                }
+                                            }
+                                            NoteEvent::SimpleSkidWaypoint {
+                                                id: point_id,
+                                                lane: point_lane,
+                                                width: point_width,
+                                            } => {
+                                                if id == point_id {
+                                                    waypoints.push(LongPoint::Normal {
+                                                        point_time: measure_tick_to_ms(
+                                                            end_measure_num as u32,
+                                                            end_tick_num as u32,
+                                                            bpm,
+                                                        ),
+                                                        pos_left: *point_lane as u32 * 4096,
+                                                        pos_right: (*point_lane + point_width)
+                                                            as u32
+                                                            * 4096,
+                                                    });
+                                                }
+                                            }
+                                            NoteEvent::ComplexSkidEnd {
+                                                id: end_id,
+                                                lane_start,
+                                                width_start,
+                                                lane_end,
+                                                width_end,
+                                            } => {
+                                                if id == end_id {
+                                                    waypoints.push(LongPoint::Skid {
+                                                        point_time: measure_tick_to_ms(
+                                                            measure_num as u32,
+                                                            end_tick_num as u32,
+                                                            bpm,
+                                                        ),
+                                                        pos_left_start: *lane_start as u32 * 4096,
+                                                        pos_right_start: (*lane_start + width_start)
+                                                            as u32
+                                                            * 4096,
+                                                        pos_left_end: *lane_end as u32 * 4096,
+                                                        pos_right_end: (*lane_end + width_end)
+                                                            as u32
+                                                            * 4096,
+                                                    });
+                                                    end_time = measure_tick_to_ms(
+                                                        measure_num as u32,
+                                                        end_tick_num as u32,
+                                                        bpm,
+                                                    );
+                                                    break 'outer;
+                                                }
+                                            }
+
                                             _ => {}
                                         }
                                     }
@@ -511,9 +672,31 @@ fn main() {
                         let mut long_point = XMLElement::new("long_point");
                         for waypoint in waypoints {
                             let mut point = XMLElement::new("point");
-                            add_s32_element(&mut point, "point_time", waypoint.point_time);
-                            add_s32_element(&mut point, "pos_left", waypoint.pos_left);
-                            add_s32_element(&mut point, "pos_right", waypoint.pos_right);
+                            match waypoint {
+                                LongPoint::Normal {
+                                    point_time,
+                                    pos_left,
+                                    pos_right,
+                                } => {
+                                    add_s32_element(&mut point, "point_time", point_time);
+                                    add_s32_element(&mut point, "pos_left", pos_left);
+                                    add_s32_element(&mut point, "pos_right", pos_right);
+                                }
+                                LongPoint::Skid {
+                                    point_time,
+                                    pos_left_start,
+                                    pos_right_start,
+                                    pos_left_end,
+                                    pos_right_end,
+                                } => {
+                                    add_s32_element(&mut point, "point_time", point_time);
+                                    add_s32_element(&mut point, "pos_left", pos_left_start);
+                                    add_s32_element(&mut point, "pos_right", pos_right_start);
+                                    add_s32_element(&mut point, "pos_lend", pos_left_end);
+                                    add_s32_element(&mut point, "pos_rend", pos_right_end);
+                                }
+                                _ => {}
+                            }
                             long_point.add_child(point).unwrap();
                         }
                         step.add_child(long_point).unwrap();
