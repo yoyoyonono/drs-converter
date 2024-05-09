@@ -336,6 +336,15 @@ fn main() {
                                             break 'outer;
                                         }
                                     }
+                                    NoteEvent::SlideWaypoint { id: point_id, lane, width } => {
+                                        if id == point_id {
+                                            waypoints.push(LongPoint {
+                                                point_time: measure_tick_to_ms(measure_num as u32, end_tick_num as u32, bpm),
+                                                pos_left: *lane as u32 * 4096,
+                                                pos_right: (*lane + width) as u32 * 4096
+                                            });
+                                        }
+                                    }
                                     _ => {
 
                                     }
@@ -357,6 +366,15 @@ fn main() {
                                                     });
                                                     end_time = measure_tick_to_ms(end_measure_num as u32, end_tick_num as u32, bpm);
                                                     break 'outer;
+                                                }
+                                            }
+                                            NoteEvent::SlideWaypoint { id: point_id, lane, width } => {
+                                                if id == point_id {
+                                                    waypoints.push(LongPoint {
+                                                        point_time: measure_tick_to_ms(end_measure_num as u32, end_tick_num as u32, bpm),
+                                                        pos_left: *lane as u32 * 4096,
+                                                        pos_right: (*lane + width) as u32 * 4096
+                                                    });
                                                 }
                                             }
                                             _ => {
