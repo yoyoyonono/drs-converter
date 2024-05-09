@@ -282,7 +282,7 @@ fn main() {
             }
             if !line.contains(":") {
                 current_measure = line.parse::<usize>().unwrap();
-                if measures.len() < current_measure + 1 {
+                while measures.len() < current_measure + 1 {
                     measures.push(Measure::new());
                 }
             } else {
