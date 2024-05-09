@@ -2,79 +2,121 @@ use xml_builder::{XMLBuilder, XMLElement, XMLVersion};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum NoteEvent {
-    LeftStep{lane: u8, width: u8},
-    RightStep{lane: u8, width: u8},
+    LeftStep {
+        lane: u8,
+        width: u8,
+    },
+    RightStep {
+        lane: u8,
+        width: u8,
+    },
     Jump,
     Down,
-    LeftHoldStart{id: u8, lane: u8, width: u8},
-    RightHoldStart{id: u8, lane: u8, width: u8},
-    SlideWaypoint{id: u8, lane: u8, width: u8},
-    SlideEnd{id: u8, lane: u8, width: u8},
-    SimpleSkidWaypoint{id: u8, lane: u8, width: u8},
-    ComplexSkidWaypoint{id: u8, lane_start: u8, width_start: u8, lane_end: u8, width_end: u8},
-    SimpleSkidEnd{id: u8, lane: u8, width: u8},
-    ComplexSkidEnd{id: u8, lane_start: u8, width_start: u8, lane_end: u8, width_end: u8},
+    LeftHoldStart {
+        id: u8,
+        lane: u8,
+        width: u8,
+    },
+    RightHoldStart {
+        id: u8,
+        lane: u8,
+        width: u8,
+    },
+    SlideWaypoint {
+        id: u8,
+        lane: u8,
+        width: u8,
+    },
+    SlideEnd {
+        id: u8,
+        lane: u8,
+        width: u8,
+    },
+    SimpleSkidWaypoint {
+        id: u8,
+        lane: u8,
+        width: u8,
+    },
+    ComplexSkidWaypoint {
+        id: u8,
+        lane_start: u8,
+        width_start: u8,
+        lane_end: u8,
+        width_end: u8,
+    },
+    SimpleSkidEnd {
+        id: u8,
+        lane: u8,
+        width: u8,
+    },
+    ComplexSkidEnd {
+        id: u8,
+        lane_start: u8,
+        width_start: u8,
+        lane_end: u8,
+        width_end: u8,
+    },
 }
 
 impl NoteEvent {
     fn from_string(input_string: String) -> NoteEvent {
-        let chars: Vec::<char> = input_string.chars().collect();
+        let chars: Vec<char> = input_string.chars().collect();
         match chars[0] {
-            '0' => {NoteEvent::LeftStep { 
-                lane: u8::from_str_radix(&chars[1].to_string(), 16).unwrap(), 
-                width: u8::from_str_radix(&chars[2].to_string(), 16).unwrap() + 1
-            }},
-            '1' => {NoteEvent::RightStep { 
-                lane: u8::from_str_radix(&chars[1].to_string(), 16).unwrap(), 
-                width: u8::from_str_radix(&chars[2].to_string(), 16).unwrap() + 1
-            }},
-            '2' => {NoteEvent::Jump},
-            '3' => {NoteEvent::Down},
-            '4' => {NoteEvent::LeftHoldStart { 
-                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(), 
-                lane: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(), 
-                width: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1
-            }},
-            '5' => {NoteEvent::RightHoldStart { 
-                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(), 
-                lane: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(), 
-                width: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1
-            }},
-            '6' => {NoteEvent::SlideWaypoint { 
-                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(), 
-                lane: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(), 
-                width: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1
-            }},
-            '7' => {NoteEvent::SlideEnd { 
-                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(), 
-                lane: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(), 
-                width: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1
-            }},
-            '8' => {NoteEvent::SimpleSkidWaypoint { 
-                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(), 
-                lane: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(), 
-                width: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1
-            }},
-            '9' => {NoteEvent::ComplexSkidWaypoint { 
-                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(), 
-                lane_start: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(), 
+            '0' => NoteEvent::LeftStep {
+                lane: u8::from_str_radix(&chars[1].to_string(), 16).unwrap(),
+                width: u8::from_str_radix(&chars[2].to_string(), 16).unwrap() + 1,
+            },
+            '1' => NoteEvent::RightStep {
+                lane: u8::from_str_radix(&chars[1].to_string(), 16).unwrap(),
+                width: u8::from_str_radix(&chars[2].to_string(), 16).unwrap() + 1,
+            },
+            '2' => NoteEvent::Jump,
+            '3' => NoteEvent::Down,
+            '4' => NoteEvent::LeftHoldStart {
+                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(),
+                lane: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(),
+                width: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1,
+            },
+            '5' => NoteEvent::RightHoldStart {
+                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(),
+                lane: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(),
+                width: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1,
+            },
+            '6' => NoteEvent::SlideWaypoint {
+                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(),
+                lane: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(),
+                width: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1,
+            },
+            '7' => NoteEvent::SlideEnd {
+                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(),
+                lane: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(),
+                width: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1,
+            },
+            '8' => NoteEvent::SimpleSkidWaypoint {
+                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(),
+                lane: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(),
+                width: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1,
+            },
+            '9' => NoteEvent::ComplexSkidWaypoint {
+                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(),
+                lane_start: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(),
                 width_start: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1,
-                lane_end: u8::from_str_radix(&chars[4].to_string(), 16).unwrap(), 
-                width_end: u8::from_str_radix(&chars[5].to_string(), 16).unwrap() + 1
-            }},
-            'A' => {NoteEvent::SimpleSkidEnd { 
-                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(), 
-                lane: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(), 
-                width: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1
-            }},
-            'B' => {NoteEvent::ComplexSkidEnd { 
-                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(), 
-                lane_start: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(), 
+                lane_end: u8::from_str_radix(&chars[4].to_string(), 16).unwrap(),
+                width_end: u8::from_str_radix(&chars[5].to_string(), 16).unwrap() + 1,
+            },
+            'A' => NoteEvent::SimpleSkidEnd {
+                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(),
+                lane: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(),
+                width: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1,
+            },
+            'B' => NoteEvent::ComplexSkidEnd {
+                id: u8::from_str_radix(&chars[1].to_string(), 36).unwrap(),
+                lane_start: u8::from_str_radix(&chars[2].to_string(), 16).unwrap(),
                 width_start: u8::from_str_radix(&chars[3].to_string(), 16).unwrap() + 1,
-                lane_end: u8::from_str_radix(&chars[4].to_string(), 16).unwrap(), 
-                width_end: u8::from_str_radix(&chars[5].to_string(), 16).unwrap() + 1
-            }},
-            _ => panic!()
+                lane_end: u8::from_str_radix(&chars[4].to_string(), 16).unwrap(),
+                width_end: u8::from_str_radix(&chars[5].to_string(), 16).unwrap() + 1,
+            },
+            _ => panic!(),
         }
     }
 }
@@ -82,18 +124,18 @@ impl NoteEvent {
 struct LongPoint {
     point_time: u32,
     pos_left: u32,
-    pos_right: u32
+    pos_right: u32,
 }
 
 #[derive(Debug)]
 struct Measure {
-    ticks: Vec::<Vec::<NoteEvent>>
+    ticks: Vec<Vec<NoteEvent>>,
 }
 
 impl Measure {
     fn new() -> Measure {
         Measure {
-            ticks : vec![Vec::<NoteEvent>::new(); 192]
+            ticks: vec![Vec::<NoteEvent>::new(); 192],
         }
     }
 }
@@ -141,7 +183,6 @@ fn xml_boilerplate(bpm: u32) -> XMLElement {
     bpm_info.add_child(bpm_).unwrap();
     info.add_child(bpm_info).unwrap();
 
-   
     let mut measure_info = XMLElement::new("measure_info");
 
     let mut measure = XMLElement::new("measure");
@@ -155,7 +196,7 @@ fn xml_boilerplate(bpm: u32) -> XMLElement {
 
     xml.add_child(info).unwrap();
 
-    xml    
+    xml
 }
 
 fn main() {
@@ -183,7 +224,8 @@ fn main() {
                     println!("Designer: {}", argument);
                 }
                 "DIFFICULTY" => {
-                    println!("Difficulty: {}", 
+                    println!(
+                        "Difficulty: {}",
                         match argument {
                             "0" => "Easy",
                             "1" => "Normal",
@@ -214,9 +256,7 @@ fn main() {
                 "00008:" => {
                     println!("Padding Bars: {}", argument);
                 }
-                _ => {
-
-                }
+                _ => {}
             }
         } else {
             break;
@@ -242,14 +282,15 @@ fn main() {
                     if note_string.len() == 0 {
                         continue;
                     }
-                    measures[current_measure].ticks[tick.parse::<usize>().unwrap()].push(NoteEvent::from_string(note_string.to_string()));
+                    measures[current_measure].ticks[tick.parse::<usize>().unwrap()]
+                        .push(NoteEvent::from_string(note_string.to_string()));
                 }
-//                 println!("Measure: {}, Tick: {}, Notes: {:?}", current_measure, tick, measures[current_measure].ticks[tick.parse::<usize>().unwrap()]);
+                //                 println!("Measure: {}, Tick: {}, Notes: {:?}", current_measure, tick, measures[current_measure].ticks[tick.parse::<usize>().unwrap()]);
             }
         } else {
             break;
         }
-    } 
+    }
 
     let mut builder = XMLBuilder::new()
         .version(XMLVersion::XML1_0)
@@ -265,34 +306,46 @@ fn main() {
             if tick.len() == 0 {
                 continue;
             }
-            println!("Measure: {:?}, Tick: {:?}, Notes: {:?}", measure_num, tick_num, tick);
-            println!("ms: {:?}", measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm));
+            println!(
+                "Measure: {:?}, Tick: {:?}, Notes: {:?}",
+                measure_num, tick_num, tick
+            );
+            println!(
+                "ms: {:?}",
+                measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm)
+            );
             for event in tick {
                 match event {
-                    NoteEvent::LeftStep {lane, width} | 
-                    NoteEvent::RightStep {lane, width} => {
+                    NoteEvent::LeftStep { lane, width } | NoteEvent::RightStep { lane, width } => {
                         let mut step = XMLElement::new("step");
                         let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
 
                         add_s64_element(&mut step, "stime_ms", time.into());
-                        add_s64_element(&mut step, "etime_ms", time.into());               
+                        add_s64_element(&mut step, "etime_ms", time.into());
                         add_s32_element(&mut step, "stime_dt", ms_to_dt(time, bpm).into());
                         add_s32_element(&mut step, "etime_dt", ms_to_dt(time, bpm).into());
                         add_s32_element(&mut step, "category", 0);
                         add_s32_element(&mut step, "pos_left", (*lane as u32 * 4096).into());
-                        add_s32_element(&mut step, "pos_right", ((lane + width) as u32 * 4096).into());
-                        add_s32_element(&mut step, "kind", match event {
-                            NoteEvent::LeftStep {..} => 1,
-                            NoteEvent::RightStep {..} => 2,
-                            _ => panic!()
-                        });
+                        add_s32_element(
+                            &mut step,
+                            "pos_right",
+                            ((lane + width) as u32 * 4096).into(),
+                        );
+                        add_s32_element(
+                            &mut step,
+                            "kind",
+                            match event {
+                                NoteEvent::LeftStep { .. } => 1,
+                                NoteEvent::RightStep { .. } => 2,
+                                _ => panic!(),
+                            },
+                        );
                         add_s32_element(&mut step, "var", 0);
                         add_s32_element(&mut step, "player_id", 0);
 
                         sequence_data.add_child(step).unwrap();
                     }
-                    NoteEvent::Jump |
-                    NoteEvent::Down => {
+                    NoteEvent::Jump | NoteEvent::Down => {
                         let mut step = XMLElement::new("step");
                         let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
 
@@ -303,18 +356,22 @@ fn main() {
                         add_s32_element(&mut step, "category", 0);
                         add_s32_element(&mut step, "pos_left", 0);
                         add_s32_element(&mut step, "pos_right", 65536);
-                        add_s32_element(&mut step, "kind", match event {
-                            NoteEvent::Down => 3,
-                            NoteEvent::Jump => 4,
-                            _ => panic!()
-                        });
+                        add_s32_element(
+                            &mut step,
+                            "kind",
+                            match event {
+                                NoteEvent::Down => 3,
+                                NoteEvent::Jump => 4,
+                                _ => panic!(),
+                            },
+                        );
                         add_s32_element(&mut step, "var", 0);
                         add_s32_element(&mut step, "player_id", 4);
 
                         sequence_data.add_child(step).unwrap();
                     }
-                    NoteEvent::LeftHoldStart { id, lane, width } |
-                    NoteEvent::RightHoldStart { id, lane, width } => {
+                    NoteEvent::LeftHoldStart { id, lane, width }
+                    | NoteEvent::RightHoldStart { id, lane, width } => {
                         let mut step = XMLElement::new("step");
                         let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
                         let mut end_time = time;
@@ -322,64 +379,106 @@ fn main() {
                         let mut waypoints = Vec::<LongPoint>::new();
 
                         // find end of hold in this measure and all future measures
-                        'outer: for (end_tick_num, end_tick) in measure.ticks.iter().enumerate().skip(tick_num) {
+                        'outer: for (end_tick_num, end_tick) in
+                            measure.ticks.iter().enumerate().skip(tick_num)
+                        {
                             for possible_end_event in end_tick {
                                 match possible_end_event {
-                                    NoteEvent::SlideEnd { id: end_id, lane: end_lane, width: end_width } => {
+                                    NoteEvent::SlideEnd {
+                                        id: end_id,
+                                        lane: end_lane,
+                                        width: end_width,
+                                    } => {
                                         if end_id == id {
                                             waypoints.push(LongPoint {
-                                                point_time: measure_tick_to_ms(measure_num as u32, end_tick_num as u32, bpm),
+                                                point_time: measure_tick_to_ms(
+                                                    measure_num as u32,
+                                                    end_tick_num as u32,
+                                                    bpm,
+                                                ),
                                                 pos_left: *end_lane as u32 * 4096,
-                                                pos_right: (*end_lane + end_width) as u32 * 4096
+                                                pos_right: (*end_lane + end_width) as u32 * 4096,
                                             });
-                                            end_time = measure_tick_to_ms(measure_num as u32, end_tick_num as u32, bpm);
+                                            end_time = measure_tick_to_ms(
+                                                measure_num as u32,
+                                                end_tick_num as u32,
+                                                bpm,
+                                            );
                                             break 'outer;
                                         }
                                     }
-                                    NoteEvent::SlideWaypoint { id: point_id, lane, width } => {
+                                    NoteEvent::SlideWaypoint {
+                                        id: point_id,
+                                        lane,
+                                        width,
+                                    } => {
                                         if id == point_id {
                                             waypoints.push(LongPoint {
-                                                point_time: measure_tick_to_ms(measure_num as u32, end_tick_num as u32, bpm),
+                                                point_time: measure_tick_to_ms(
+                                                    measure_num as u32,
+                                                    end_tick_num as u32,
+                                                    bpm,
+                                                ),
                                                 pos_left: *lane as u32 * 4096,
-                                                pos_right: (*lane + width) as u32 * 4096
+                                                pos_right: (*lane + width) as u32 * 4096,
                                             });
                                         }
                                     }
-                                    _ => {
-
-                                    }
+                                    _ => {}
                                 }
                             }
                         }
 
                         if end_time == time {
-                            'outer: for (end_measure_num, end_measure) in measures.iter().enumerate().skip(measure_num) {
-                                for (end_tick_num, end_tick) in end_measure.ticks.iter().enumerate() {
+                            'outer: for (end_measure_num, end_measure) in
+                                measures.iter().enumerate().skip(measure_num)
+                            {
+                                for (end_tick_num, end_tick) in end_measure.ticks.iter().enumerate()
+                                {
                                     for possible_end_event in end_tick {
                                         match possible_end_event {
-                                            NoteEvent::SlideEnd { id: end_id, lane: end_lane, width: end_width } => {
+                                            NoteEvent::SlideEnd {
+                                                id: end_id,
+                                                lane: end_lane,
+                                                width: end_width,
+                                            } => {
                                                 if end_id == id {
                                                     waypoints.push(LongPoint {
-                                                        point_time: measure_tick_to_ms(end_measure_num as u32, end_tick_num as u32, bpm),
+                                                        point_time: measure_tick_to_ms(
+                                                            end_measure_num as u32,
+                                                            end_tick_num as u32,
+                                                            bpm,
+                                                        ),
                                                         pos_left: *end_lane as u32 * 4096,
-                                                        pos_right: (*end_lane + end_width) as u32 * 4096
+                                                        pos_right: (*end_lane + end_width) as u32
+                                                            * 4096,
                                                     });
-                                                    end_time = measure_tick_to_ms(end_measure_num as u32, end_tick_num as u32, bpm);
+                                                    end_time = measure_tick_to_ms(
+                                                        end_measure_num as u32,
+                                                        end_tick_num as u32,
+                                                        bpm,
+                                                    );
                                                     break 'outer;
                                                 }
                                             }
-                                            NoteEvent::SlideWaypoint { id: point_id, lane, width } => {
+                                            NoteEvent::SlideWaypoint {
+                                                id: point_id,
+                                                lane,
+                                                width,
+                                            } => {
                                                 if id == point_id {
                                                     waypoints.push(LongPoint {
-                                                        point_time: measure_tick_to_ms(end_measure_num as u32, end_tick_num as u32, bpm),
+                                                        point_time: measure_tick_to_ms(
+                                                            end_measure_num as u32,
+                                                            end_tick_num as u32,
+                                                            bpm,
+                                                        ),
                                                         pos_left: *lane as u32 * 4096,
-                                                        pos_right: (*lane + width) as u32 * 4096
+                                                        pos_right: (*lane + width) as u32 * 4096,
                                                     });
                                                 }
                                             }
-                                            _ => {
-
-                                            }
+                                            _ => {}
                                         }
                                     }
                                 }
@@ -392,12 +491,20 @@ fn main() {
                         add_s32_element(&mut step, "etime_dt", ms_to_dt(end_time, bpm).into());
                         add_s32_element(&mut step, "category", 0);
                         add_s32_element(&mut step, "pos_left", (*lane as u32 * 4096).into());
-                        add_s32_element(&mut step, "pos_right", ((lane + width) as u32 * 4096).into());
-                        add_s32_element(&mut step, "kind", match event {
-                            NoteEvent::LeftHoldStart {..} => 1,
-                            NoteEvent::RightHoldStart {..} => 2,
-                            _ => panic!()
-                        });
+                        add_s32_element(
+                            &mut step,
+                            "pos_right",
+                            ((lane + width) as u32 * 4096).into(),
+                        );
+                        add_s32_element(
+                            &mut step,
+                            "kind",
+                            match event {
+                                NoteEvent::LeftHoldStart { .. } => 1,
+                                NoteEvent::RightHoldStart { .. } => 2,
+                                _ => panic!(),
+                            },
+                        );
                         add_s32_element(&mut step, "var", 0);
                         add_s32_element(&mut step, "player_id", 0);
 
@@ -413,9 +520,7 @@ fn main() {
 
                         sequence_data.add_child(step).unwrap();
                     }
-                    _ => {
-
-                    }
+                    _ => {}
                 }
             }
         }
