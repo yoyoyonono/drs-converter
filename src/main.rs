@@ -1,3 +1,5 @@
+use std::num::FpCategory;
+
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion, XML};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -280,8 +282,138 @@ fn main() {
             }
             println!("Measure: {:?}, Tick: {:?}, Notes: {:?}", measure_num, tick_num, tick);
             println!("ms: {:?}", measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm));
+            for event in tick {
+                match event {
+                    NoteEvent::LeftStep {lane, width} | 
+                    NoteEvent::RightStep {lane, width} => {
+                        let mut step = XMLElement::new("step");
+                        let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
+
+                        let mut stime_ms = XMLElement::new("stime_ms");
+                        stime_ms.add_attribute("__type", "s32");
+                        stime_ms.add_text(time.to_string().into()).unwrap();
+                        step.add_child(stime_ms).unwrap();
+                        
+                        let mut etime_ms = XMLElement::new("etime_ms");
+                        etime_ms.add_attribute("__type", "s32");
+                        etime_ms.add_text(time.to_string().into()).unwrap();
+                        step.add_child(etime_ms).unwrap();
+
+                        let mut stime_dt = XMLElement::new("stime_dt");
+                        stime_dt.add_attribute("__type", "s32");
+                        stime_dt.add_text(ms_to_dt(time, bpm).to_string().into()).unwrap();
+                        step.add_child(stime_dt).unwrap();
+
+                        let mut etime_dt = XMLElement::new("etime_dt");
+                        etime_dt.add_attribute("__type", "s32");
+                        etime_dt.add_text(ms_to_dt(time, bpm).to_string().into()).unwrap();
+                        step.add_child(etime_dt).unwrap();
+
+                        let mut category = XMLElement::new("category");
+                        category.add_attribute("__type", "s32");
+                        category.add_text("0".into()).unwrap();
+                        step.add_child(category).unwrap();
+
+                        let mut pos_left = XMLElement::new("pos_left");
+                        pos_left.add_attribute("__type", "s32");
+                        pos_left.add_text((*lane as u32 * 4096).to_string().into()).unwrap();
+                        step.add_child(pos_left).unwrap();
+
+                        let mut pos_right = XMLElement::new("pos_right");
+                        pos_right.add_attribute("__type", "s32");
+                        pos_right.add_text(((lane + width) as u32 * 4096).to_string().into()).unwrap();
+                        step.add_child(pos_right).unwrap();
+
+                        let mut kind = XMLElement::new("kind");
+                        kind.add_attribute("__type", "s32");
+                        kind.add_text(match event {
+                            NoteEvent::LeftStep {..} => "1".into(),
+                            NoteEvent::RightStep {..} => "2".into(),
+                            _ => panic!()
+                        }).unwrap();
+                        step.add_child(kind).unwrap();
+
+                        let mut var = XMLElement::new("var");
+                        var.add_attribute("__type", "s32");
+                        var.add_text("0".into()).unwrap();
+                        step.add_child(var).unwrap();
+
+                        let mut player_id = XMLElement::new("player_id");
+                        player_id.add_attribute("__type", "s32");
+                        player_id.add_text("0".into()).unwrap();
+                        step.add_child(player_id).unwrap();
+
+                        sequence_data.add_child(step).unwrap();
+                    }
+                    NoteEvent::Jump |
+                    NoteEvent::Down => {
+                        let mut step = XMLElement::new("step");
+                        let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
+
+                        let mut stime_ms = XMLElement::new("stime_ms");
+                        stime_ms.add_attribute("__type", "s32");
+                        stime_ms.add_text(time.to_string().into()).unwrap();
+                        step.add_child(stime_ms).unwrap();
+                        
+                        let mut etime_ms = XMLElement::new("etime_ms");
+                        etime_ms.add_attribute("__type", "s32");
+                        etime_ms.add_text(time.to_string().into()).unwrap();
+                        step.add_child(etime_ms).unwrap();
+
+                        let mut stime_dt = XMLElement::new("stime_dt");
+                        stime_dt.add_attribute("__type", "s32");
+                        stime_dt.add_text(ms_to_dt(time, bpm).to_string().into()).unwrap();
+                        step.add_child(stime_dt).unwrap();
+
+                        let mut etime_dt = XMLElement::new("etime_dt");
+                        etime_dt.add_attribute("__type", "s32");
+                        etime_dt.add_text(ms_to_dt(time, bpm).to_string().into()).unwrap();
+                        step.add_child(etime_dt).unwrap();
+
+                        let mut category = XMLElement::new("category");
+                        category.add_attribute("__type", "s32");
+                        category.add_text("0".into()).unwrap();
+                        step.add_child(category).unwrap();
+
+                        let mut pos_left = XMLElement::new("pos_left");
+                        pos_left.add_attribute("__type", "s32");
+                        pos_left.add_text("0".into()).unwrap();
+                        step.add_child(pos_left).unwrap();
+
+                        let mut pos_right = XMLElement::new("pos_right");
+                        pos_right.add_attribute("__type", "s32");
+                        pos_right.add_text("65536".into()).unwrap();
+                        step.add_child(pos_right).unwrap();
+
+                        let mut kind = XMLElement::new("kind");
+                        kind.add_attribute("__type", "s32");
+                        kind.add_text(match event {
+                            NoteEvent::Down => "3".into(),
+                            NoteEvent::Jump => "4".into(),
+                            _ => panic!()
+                        }).unwrap();
+                        step.add_child(kind).unwrap();
+
+                        let mut var = XMLElement::new("var");
+                        var.add_attribute("__type", "s32");
+                        var.add_text("0".into()).unwrap();
+                        step.add_child(var).unwrap();
+
+                        let mut player_id = XMLElement::new("player_id");
+                        player_id.add_attribute("__type", "s32");
+                        player_id.add_text("4".into()).unwrap();
+
+                        sequence_data.add_child(step).unwrap();
+                    }
+                    _ => {
+
+                    }
+                }
+            }
         }
     }
+
+    data.add_child(sequence_data).unwrap();
 
     builder.set_root_element(data);
     let mut writer = Vec::<u8>::new();
