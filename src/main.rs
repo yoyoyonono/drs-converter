@@ -1,5 +1,3 @@
-use std::num::FpCategory;
-
 use xml_builder::{XMLBuilder, XMLElement, XMLVersion, XML};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,6 +77,12 @@ impl NoteEvent {
             _ => panic!()
         }
     }
+}
+
+struct LongPoint {
+    point_time: u32,
+    pos_left: u32,
+    pos_right: u32
 }
 
 #[derive(Debug)]
@@ -402,6 +406,114 @@ fn main() {
                         let mut player_id = XMLElement::new("player_id");
                         player_id.add_attribute("__type", "s32");
                         player_id.add_text("4".into()).unwrap();
+
+                        sequence_data.add_child(step).unwrap();
+                    }
+                    NoteEvent::LeftHoldStart { id, lane, width } |
+                    NoteEvent::RightHoldStart { id, lane, width } => {
+                        let mut step = XMLElement::new("step");
+                        let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
+                        let mut end_time = time;
+
+                        let mut waypoints = Vec::<LongPoint>::new();
+
+                        // find end of hold in this measure and all future measures
+                        'outer: for (end_tick_num, end_tick) in measure.ticks.iter().enumerate().skip(tick_num) {
+                            for possible_end_event in end_tick {
+                                match possible_end_event {
+                                    NoteEvent::SlideEnd { id: end_id, lane: end_lane, width: end_width } => {
+                                        if end_id == id {
+                                            waypoints.push(LongPoint {
+                                                point_time: measure_tick_to_ms(measure_num as u32, end_tick_num as u32, bpm),
+                                                pos_left: *end_lane as u32 * 4096,
+                                                pos_right: (*end_lane + end_width) as u32 * 4096
+                                            });
+                                            end_time = measure_tick_to_ms(measure_num as u32, end_tick_num as u32, bpm);
+                                            break 'outer;
+                                        }
+                                    }
+                                    _ => {
+
+                                    }
+                                }
+                            }
+                        }
+
+                        let mut stime_ms = XMLElement::new("stime_ms");
+                        stime_ms.add_attribute("__type", "s32");
+                        stime_ms.add_text(time.to_string().into()).unwrap();
+                        step.add_child(stime_ms).unwrap();
+                        
+                        let mut etime_ms = XMLElement::new("etime_ms");
+                        etime_ms.add_attribute("__type", "s32");
+                        etime_ms.add_text(end_time.to_string().into()).unwrap();
+                        step.add_child(etime_ms).unwrap();
+
+                        let mut stime_dt = XMLElement::new("stime_dt");
+                        stime_dt.add_attribute("__type", "s32");
+                        stime_dt.add_text(ms_to_dt(time, bpm).to_string().into()).unwrap();
+                        step.add_child(stime_dt).unwrap();
+
+                        let mut etime_dt = XMLElement::new("etime_dt");
+                        etime_dt.add_attribute("__type", "s32");
+                        etime_dt.add_text(ms_to_dt(end_time, bpm).to_string().into()).unwrap();
+                        step.add_child(etime_dt).unwrap();
+
+                        let mut category = XMLElement::new("category");
+                        category.add_attribute("__type", "s32");
+                        category.add_text("0".into()).unwrap();
+                        step.add_child(category).unwrap();
+
+                        let mut pos_left = XMLElement::new("pos_left");
+                        pos_left.add_attribute("__type", "s32");
+                        pos_left.add_text((*lane as u32 * 4096).to_string().into()).unwrap();
+                        step.add_child(pos_left).unwrap();
+
+                        let mut pos_right = XMLElement::new("pos_right");
+                        pos_right.add_attribute("__type", "s32");
+                        pos_right.add_text(((lane + width) as u32 * 4096).to_string().into()).unwrap();
+                        step.add_child(pos_right).unwrap();
+
+                        let mut kind = XMLElement::new("kind");
+                        kind.add_attribute("__type", "s32");
+                        kind.add_text(match event {
+                            NoteEvent::LeftHoldStart {..} => "1".into(),
+                            NoteEvent::RightHoldStart {..} => "2".into(),
+                            _ => panic!()
+                        }).unwrap();
+                        step.add_child(kind).unwrap();
+
+                        let mut var = XMLElement::new("var");
+                        var.add_attribute("__type", "s32");
+                        var.add_text("0".into()).unwrap();
+                        step.add_child(var).unwrap();
+
+                        let mut player_id = XMLElement::new("player_id");
+                        player_id.add_attribute("__type", "s32");
+                        player_id.add_text("0".into()).unwrap();
+                        step.add_child(player_id).unwrap();
+
+                        let mut long_point = XMLElement::new("long_point");
+                        for waypoint in waypoints {
+                            let mut point = XMLElement::new("point");
+                            let mut point_time = XMLElement::new("point_time");
+                            point_time.add_attribute("__type", "s32");
+                            point_time.add_text(waypoint.point_time.to_string().into()).unwrap();
+                            point.add_child(point_time).unwrap();
+
+                            let mut pos_left = XMLElement::new("pos_left");
+                            pos_left.add_attribute("__type", "s32");
+                            pos_left.add_text(waypoint.pos_left.to_string().into()).unwrap();
+                            point.add_child(pos_left).unwrap();
+
+                            let mut pos_right = XMLElement::new("pos_right");
+                            pos_right.add_attribute("__type", "s32");
+                            pos_right.add_text(waypoint.pos_right.to_string().into()).unwrap();
+                            point.add_child(pos_right).unwrap();
+
+                            long_point.add_child(point).unwrap();
+                        }
+                        step.add_child(long_point).unwrap();
 
                         sequence_data.add_child(step).unwrap();
                     }
