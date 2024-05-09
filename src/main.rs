@@ -127,12 +127,17 @@ enum LongPoint {
         pos_left: u32,
         pos_right: u32,
     },
-    Skid {
+    SkidComplex {
         point_time: u32,
         pos_left_start: u32,
         pos_right_start: u32,
         pos_left_end: u32,
         pos_right_end: u32,
+    },
+    SkidSimple {
+        point_time: u32,
+        pos_left: u32,
+        pos_right: u32,
     },
 }
 
@@ -439,16 +444,14 @@ fn main() {
                                         width: end_width,
                                     } => {
                                         if id == end_id {
-                                            waypoints.push(LongPoint::Skid {
+                                            waypoints.push(LongPoint::SkidSimple {
                                                 point_time: measure_tick_to_ms(
                                                     measure_num as u32,
                                                     end_tick_num as u32,
                                                     bpm,
                                                 ),
-                                                pos_left_start: *lane as u32 * 4096,
-                                                pos_right_start: (*lane + width) as u32 * 4096,
-                                                pos_left_end: *end_lane as u32 * 4096,
-                                                pos_right_end: (*end_lane + end_width) as u32
+                                                pos_left: *end_lane as u32 * 4096,
+                                                pos_right: (*end_lane + end_width) as u32
                                                     * 4096,
                                             });
                                             end_time = measure_tick_to_ms(
@@ -465,7 +468,7 @@ fn main() {
                                         width: point_width,
                                     } => {
                                         if id == point_id {
-                                            waypoints.push(LongPoint::Normal {
+                                            waypoints.push(LongPoint::SkidSimple {
                                                 point_time: measure_tick_to_ms(
                                                     measure_num as u32,
                                                     end_tick_num as u32,
@@ -485,7 +488,7 @@ fn main() {
                                         width_end,
                                     } => {
                                         if id == end_id {
-                                            waypoints.push(LongPoint::Skid {
+                                            waypoints.push(LongPoint::SkidComplex {
                                                 point_time: measure_tick_to_ms(
                                                     measure_num as u32,
                                                     end_tick_num as u32,
@@ -566,17 +569,14 @@ fn main() {
                                                 width: end_width,
                                             } => {
                                                 if id == end_id {
-                                                    waypoints.push(LongPoint::Skid {
+                                                    waypoints.push(LongPoint::SkidSimple {
                                                         point_time: measure_tick_to_ms(
                                                             end_measure_num as u32,
                                                             end_tick_num as u32,
                                                             bpm,
                                                         ),
-                                                        pos_left_start: *lane as u32 * 4096,
-                                                        pos_right_start: (*lane + width) as u32
-                                                            * 4096,
-                                                        pos_left_end: *end_lane as u32 * 4096,
-                                                        pos_right_end: (*end_lane + end_width)
+                                                        pos_left: *end_lane as u32 * 4096,
+                                                        pos_right: (*end_lane + end_width)
                                                             as u32
                                                             * 4096,
                                                     });
@@ -594,7 +594,7 @@ fn main() {
                                                 width: point_width,
                                             } => {
                                                 if id == point_id {
-                                                    waypoints.push(LongPoint::Normal {
+                                                    waypoints.push(LongPoint::SkidSimple {
                                                         point_time: measure_tick_to_ms(
                                                             end_measure_num as u32,
                                                             end_tick_num as u32,
@@ -615,7 +615,7 @@ fn main() {
                                                 width_end,
                                             } => {
                                                 if id == end_id {
-                                                    waypoints.push(LongPoint::Skid {
+                                                    waypoints.push(LongPoint::SkidComplex {
                                                         point_time: measure_tick_to_ms(
                                                             measure_num as u32,
                                                             end_tick_num as u32,
@@ -650,7 +650,7 @@ fn main() {
                         add_s64_element(&mut step, "etime_ms", end_time.into());
                         add_s32_element(&mut step, "stime_dt", ms_to_dt(time, bpm).into());
                         add_s32_element(&mut step, "etime_dt", ms_to_dt(end_time, bpm).into());
-                        add_s32_element(&mut step, "category", 0);
+                        add_s32_element(&mut step, "category", 1);
                         add_s32_element(&mut step, "pos_left", (*lane as u32 * 4096).into());
                         add_s32_element(
                             &mut step,
@@ -670,6 +670,10 @@ fn main() {
                         add_s32_element(&mut step, "player_id", 0);
 
                         let mut long_point = XMLElement::new("long_point");
+
+                        let mut last_left = *lane as u32 * 4096;
+                        let mut last_right = (*lane + width) as u32 * 4096;
+
                         for waypoint in waypoints {
                             let mut point = XMLElement::new("point");
                             match waypoint {
@@ -678,22 +682,42 @@ fn main() {
                                     pos_left,
                                     pos_right,
                                 } => {
-                                    add_s32_element(&mut point, "point_time", point_time);
+                                    add_s64_element(&mut point, "point_time", point_time.into());
                                     add_s32_element(&mut point, "pos_left", pos_left);
                                     add_s32_element(&mut point, "pos_right", pos_right);
                                 }
-                                LongPoint::Skid {
+                                LongPoint::SkidComplex {
                                     point_time,
                                     pos_left_start,
                                     pos_right_start,
                                     pos_left_end,
                                     pos_right_end,
                                 } => {
-                                    add_s32_element(&mut point, "point_time", point_time);
+                                    add_s64_element(&mut point, "point_time", point_time.into());
                                     add_s32_element(&mut point, "pos_left", pos_left_start);
                                     add_s32_element(&mut point, "pos_right", pos_right_start);
                                     add_s32_element(&mut point, "pos_lend", pos_left_end);
                                     add_s32_element(&mut point, "pos_rend", pos_right_end);
+                                    last_left = pos_left_end;
+                                    last_right = pos_right_end;
+                                }
+                                LongPoint::SkidSimple {
+                                    point_time,
+                                    pos_left,
+                                    pos_right,
+                                } => {
+                                    add_s64_element(&mut point, "point_time", point_time.into());
+                                    add_s32_element(&mut point, "pos_left", last_left);
+                                    add_s32_element(&mut point, "pos_right", last_right);
+                                    if pos_right > last_right {
+                                        add_s32_element(&mut point, "pos_lend", (pos_left + pos_right) / 2);
+                                        add_s32_element(&mut point, "pos_rend", pos_right);
+                                    } else {
+                                        add_s32_element(&mut point, "pos_lend", pos_left);
+                                        add_s32_element(&mut point, "pos_rend", (pos_left + pos_right) / 2);
+                                    }
+                                    last_left = pos_left;
+                                    last_right = pos_right;
                                 }
                                 _ => {}
                             }
