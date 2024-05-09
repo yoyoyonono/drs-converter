@@ -343,6 +343,31 @@ fn main() {
                             }
                         }
 
+                        if end_time == time {
+                            'outer: for (end_measure_num, end_measure) in measures.iter().enumerate().skip(measure_num) {
+                                for (end_tick_num, end_tick) in end_measure.ticks.iter().enumerate() {
+                                    for possible_end_event in end_tick {
+                                        match possible_end_event {
+                                            NoteEvent::SlideEnd { id: end_id, lane: end_lane, width: end_width } => {
+                                                if end_id == id {
+                                                    waypoints.push(LongPoint {
+                                                        point_time: measure_tick_to_ms(end_measure_num as u32, end_tick_num as u32, bpm),
+                                                        pos_left: *end_lane as u32 * 4096,
+                                                        pos_right: (*end_lane + end_width) as u32 * 4096
+                                                    });
+                                                    end_time = measure_tick_to_ms(end_measure_num as u32, end_tick_num as u32, bpm);
+                                                    break 'outer;
+                                                }
+                                            }
+                                            _ => {
+
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         add_s64_element(&mut step, "stime_ms", time.into());
                         add_s64_element(&mut step, "etime_ms", end_time.into());
                         add_s32_element(&mut step, "stime_dt", ms_to_dt(time, bpm).into());
