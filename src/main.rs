@@ -110,38 +110,34 @@ fn ms_to_dt(ms: u32, bpm: u32) -> u32 {
     (ms as f32 * 0.008 * bpm as f32) as u32
 }
 
+fn add_s32_element(xml: &mut XMLElement, name: &str, value: u32) {
+    let mut element = XMLElement::new(name);
+    element.add_attribute("__type", "s32");
+    element.add_text(value.to_string().into()).unwrap();
+    xml.add_child(element).unwrap();
+}
+
+fn add_s64_element(xml: &mut XMLElement, name: &str, value: u64) {
+    let mut element = XMLElement::new(name);
+    element.add_attribute("__type", "s64");
+    element.add_text(value.to_string().into()).unwrap();
+    xml.add_child(element).unwrap();
+}
+
 fn xml_boilerplate(bpm: u32) -> XMLElement {
     let mut xml = XMLElement::new("data");
-    
-    let mut seq_version = XMLElement::new("seq_version");
-    seq_version.add_attribute("__type", "s32");
-    seq_version.add_text("8".into()).unwrap();
-    xml.add_child(seq_version).unwrap();
+
+    add_s32_element(&mut xml, "seq_version", 8);
 
     let mut info = XMLElement::new("info");
 
-    let mut tick = XMLElement::new("tick");
-    tick.add_attribute("__type", "s32");
-    tick.add_text("480".into()).unwrap();
-    info.add_child(tick).unwrap();
-
+    add_s32_element(&mut info, "tick", 480);
 
     let mut bpm_info = XMLElement::new("bpm_info");
     let mut bpm_ = XMLElement::new("bpm");
-    let mut time = XMLElement::new("time");
-    time.add_attribute("__type", "s32");
-    time.add_text("0".into()).unwrap();
-    bpm_.add_child(time).unwrap();
-
-    let mut delta_time = XMLElement::new("delta_time");
-    delta_time.add_attribute("__type", "s32");
-    delta_time.add_text("0".into()).unwrap();
-    bpm_.add_child(delta_time).unwrap();
-
-    let mut bpm_value = XMLElement::new("bpm");
-    bpm_value.add_attribute("__type", "s32");
-    bpm_value.add_text(bpm.to_string()).unwrap();
-    bpm_.add_child(bpm_value).unwrap();
+    add_s32_element(&mut bpm_, "time", 0);
+    add_s32_element(&mut bpm_, "delta_time", 0);
+    add_s32_element(&mut bpm_, "bpm", 12000);
     bpm_info.add_child(bpm_).unwrap();
     info.add_child(bpm_info).unwrap();
 
@@ -149,25 +145,10 @@ fn xml_boilerplate(bpm: u32) -> XMLElement {
     let mut measure_info = XMLElement::new("measure_info");
 
     let mut measure = XMLElement::new("measure");
-    let mut measure_time = XMLElement::new("time");
-    measure_time.add_attribute("__type", "s32");
-    measure_time.add_text("0".into()).unwrap();
-    measure.add_child(measure_time).unwrap();
-
-    let mut measure_delta_time = XMLElement::new("delta_time");
-    measure_delta_time.add_attribute("__type", "s32");
-    measure_delta_time.add_text("0".into()).unwrap();
-    measure.add_child(measure_delta_time).unwrap();
-
-    let mut measure_num = XMLElement::new("num");
-    measure_num.add_attribute("__type", "s32");
-    measure_num.add_text("4".into()).unwrap();
-    measure.add_child(measure_num).unwrap();
-
-    let mut measure_denomi = XMLElement::new("denomi");
-    measure_denomi.add_attribute("__type", "s32");
-    measure_denomi.add_text("4".into()).unwrap();
-    measure.add_child(measure_denomi).unwrap();
+    add_s32_element(&mut measure, "time", 0);
+    add_s32_element(&mut measure, "delta_time", 0);
+    add_s32_element(&mut measure, "num", 4);
+    add_s32_element(&mut measure, "denomi", 4);
     measure_info.add_child(measure).unwrap();
 
     info.add_child(measure_info).unwrap();
@@ -293,59 +274,20 @@ fn main() {
                         let mut step = XMLElement::new("step");
                         let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
 
-                        let mut stime_ms = XMLElement::new("stime_ms");
-                        stime_ms.add_attribute("__type", "s32");
-                        stime_ms.add_text(time.to_string().into()).unwrap();
-                        step.add_child(stime_ms).unwrap();
-                        
-                        let mut etime_ms = XMLElement::new("etime_ms");
-                        etime_ms.add_attribute("__type", "s32");
-                        etime_ms.add_text(time.to_string().into()).unwrap();
-                        step.add_child(etime_ms).unwrap();
-
-                        let mut stime_dt = XMLElement::new("stime_dt");
-                        stime_dt.add_attribute("__type", "s32");
-                        stime_dt.add_text(ms_to_dt(time, bpm).to_string().into()).unwrap();
-                        step.add_child(stime_dt).unwrap();
-
-                        let mut etime_dt = XMLElement::new("etime_dt");
-                        etime_dt.add_attribute("__type", "s32");
-                        etime_dt.add_text(ms_to_dt(time, bpm).to_string().into()).unwrap();
-                        step.add_child(etime_dt).unwrap();
-
-                        let mut category = XMLElement::new("category");
-                        category.add_attribute("__type", "s32");
-                        category.add_text("0".into()).unwrap();
-                        step.add_child(category).unwrap();
-
-                        let mut pos_left = XMLElement::new("pos_left");
-                        pos_left.add_attribute("__type", "s32");
-                        pos_left.add_text((*lane as u32 * 4096).to_string().into()).unwrap();
-                        step.add_child(pos_left).unwrap();
-
-                        let mut pos_right = XMLElement::new("pos_right");
-                        pos_right.add_attribute("__type", "s32");
-                        pos_right.add_text(((lane + width) as u32 * 4096).to_string().into()).unwrap();
-                        step.add_child(pos_right).unwrap();
-
-                        let mut kind = XMLElement::new("kind");
-                        kind.add_attribute("__type", "s32");
-                        kind.add_text(match event {
-                            NoteEvent::LeftStep {..} => "1".into(),
-                            NoteEvent::RightStep {..} => "2".into(),
+                        add_s64_element(&mut step, "stime_ms", time.into());
+                        add_s64_element(&mut step, "etime_ms", time.into());               
+                        add_s32_element(&mut step, "stime_dt", ms_to_dt(time, bpm).into());
+                        add_s32_element(&mut step, "etime_dt", ms_to_dt(time, bpm).into());
+                        add_s32_element(&mut step, "category", 0);
+                        add_s32_element(&mut step, "pos_left", (*lane as u32 * 4096).into());
+                        add_s32_element(&mut step, "pos_right", ((lane + width) as u32 * 4096).into());
+                        add_s32_element(&mut step, "kind", match event {
+                            NoteEvent::LeftStep {..} => 1,
+                            NoteEvent::RightStep {..} => 2,
                             _ => panic!()
-                        }).unwrap();
-                        step.add_child(kind).unwrap();
-
-                        let mut var = XMLElement::new("var");
-                        var.add_attribute("__type", "s32");
-                        var.add_text("0".into()).unwrap();
-                        step.add_child(var).unwrap();
-
-                        let mut player_id = XMLElement::new("player_id");
-                        player_id.add_attribute("__type", "s32");
-                        player_id.add_text("0".into()).unwrap();
-                        step.add_child(player_id).unwrap();
+                        });
+                        add_s32_element(&mut step, "var", 0);
+                        add_s32_element(&mut step, "player_id", 0);
 
                         sequence_data.add_child(step).unwrap();
                     }
@@ -354,58 +296,20 @@ fn main() {
                         let mut step = XMLElement::new("step");
                         let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
 
-                        let mut stime_ms = XMLElement::new("stime_ms");
-                        stime_ms.add_attribute("__type", "s32");
-                        stime_ms.add_text(time.to_string().into()).unwrap();
-                        step.add_child(stime_ms).unwrap();
-                        
-                        let mut etime_ms = XMLElement::new("etime_ms");
-                        etime_ms.add_attribute("__type", "s32");
-                        etime_ms.add_text(time.to_string().into()).unwrap();
-                        step.add_child(etime_ms).unwrap();
-
-                        let mut stime_dt = XMLElement::new("stime_dt");
-                        stime_dt.add_attribute("__type", "s32");
-                        stime_dt.add_text(ms_to_dt(time, bpm).to_string().into()).unwrap();
-                        step.add_child(stime_dt).unwrap();
-
-                        let mut etime_dt = XMLElement::new("etime_dt");
-                        etime_dt.add_attribute("__type", "s32");
-                        etime_dt.add_text(ms_to_dt(time, bpm).to_string().into()).unwrap();
-                        step.add_child(etime_dt).unwrap();
-
-                        let mut category = XMLElement::new("category");
-                        category.add_attribute("__type", "s32");
-                        category.add_text("0".into()).unwrap();
-                        step.add_child(category).unwrap();
-
-                        let mut pos_left = XMLElement::new("pos_left");
-                        pos_left.add_attribute("__type", "s32");
-                        pos_left.add_text("0".into()).unwrap();
-                        step.add_child(pos_left).unwrap();
-
-                        let mut pos_right = XMLElement::new("pos_right");
-                        pos_right.add_attribute("__type", "s32");
-                        pos_right.add_text("65536".into()).unwrap();
-                        step.add_child(pos_right).unwrap();
-
-                        let mut kind = XMLElement::new("kind");
-                        kind.add_attribute("__type", "s32");
-                        kind.add_text(match event {
-                            NoteEvent::Down => "3".into(),
-                            NoteEvent::Jump => "4".into(),
+                        add_s64_element(&mut step, "stime_ms", time.into());
+                        add_s64_element(&mut step, "etime_ms", time.into());
+                        add_s32_element(&mut step, "stime_dt", ms_to_dt(time, bpm).into());
+                        add_s32_element(&mut step, "etime_dt", ms_to_dt(time, bpm).into());
+                        add_s32_element(&mut step, "category", 0);
+                        add_s32_element(&mut step, "pos_left", 0);
+                        add_s32_element(&mut step, "pos_right", 65536);
+                        add_s32_element(&mut step, "kind", match event {
+                            NoteEvent::Down => 3,
+                            NoteEvent::Jump => 4,
                             _ => panic!()
-                        }).unwrap();
-                        step.add_child(kind).unwrap();
-
-                        let mut var = XMLElement::new("var");
-                        var.add_attribute("__type", "s32");
-                        var.add_text("0".into()).unwrap();
-                        step.add_child(var).unwrap();
-
-                        let mut player_id = XMLElement::new("player_id");
-                        player_id.add_attribute("__type", "s32");
-                        player_id.add_text("4".into()).unwrap();
+                        });
+                        add_s32_element(&mut step, "var", 0);
+                        add_s32_element(&mut step, "player_id", 4);
 
                         sequence_data.add_child(step).unwrap();
                     }
@@ -439,78 +343,27 @@ fn main() {
                             }
                         }
 
-                        let mut stime_ms = XMLElement::new("stime_ms");
-                        stime_ms.add_attribute("__type", "s32");
-                        stime_ms.add_text(time.to_string().into()).unwrap();
-                        step.add_child(stime_ms).unwrap();
-                        
-                        let mut etime_ms = XMLElement::new("etime_ms");
-                        etime_ms.add_attribute("__type", "s32");
-                        etime_ms.add_text(end_time.to_string().into()).unwrap();
-                        step.add_child(etime_ms).unwrap();
-
-                        let mut stime_dt = XMLElement::new("stime_dt");
-                        stime_dt.add_attribute("__type", "s32");
-                        stime_dt.add_text(ms_to_dt(time, bpm).to_string().into()).unwrap();
-                        step.add_child(stime_dt).unwrap();
-
-                        let mut etime_dt = XMLElement::new("etime_dt");
-                        etime_dt.add_attribute("__type", "s32");
-                        etime_dt.add_text(ms_to_dt(end_time, bpm).to_string().into()).unwrap();
-                        step.add_child(etime_dt).unwrap();
-
-                        let mut category = XMLElement::new("category");
-                        category.add_attribute("__type", "s32");
-                        category.add_text("0".into()).unwrap();
-                        step.add_child(category).unwrap();
-
-                        let mut pos_left = XMLElement::new("pos_left");
-                        pos_left.add_attribute("__type", "s32");
-                        pos_left.add_text((*lane as u32 * 4096).to_string().into()).unwrap();
-                        step.add_child(pos_left).unwrap();
-
-                        let mut pos_right = XMLElement::new("pos_right");
-                        pos_right.add_attribute("__type", "s32");
-                        pos_right.add_text(((lane + width) as u32 * 4096).to_string().into()).unwrap();
-                        step.add_child(pos_right).unwrap();
-
-                        let mut kind = XMLElement::new("kind");
-                        kind.add_attribute("__type", "s32");
-                        kind.add_text(match event {
-                            NoteEvent::LeftHoldStart {..} => "1".into(),
-                            NoteEvent::RightHoldStart {..} => "2".into(),
+                        add_s64_element(&mut step, "stime_ms", time.into());
+                        add_s64_element(&mut step, "etime_ms", end_time.into());
+                        add_s32_element(&mut step, "stime_dt", ms_to_dt(time, bpm).into());
+                        add_s32_element(&mut step, "etime_dt", ms_to_dt(end_time, bpm).into());
+                        add_s32_element(&mut step, "category", 0);
+                        add_s32_element(&mut step, "pos_left", (*lane as u32 * 4096).into());
+                        add_s32_element(&mut step, "pos_right", ((lane + width) as u32 * 4096).into());
+                        add_s32_element(&mut step, "kind", match event {
+                            NoteEvent::LeftHoldStart {..} => 1,
+                            NoteEvent::RightHoldStart {..} => 2,
                             _ => panic!()
-                        }).unwrap();
-                        step.add_child(kind).unwrap();
-
-                        let mut var = XMLElement::new("var");
-                        var.add_attribute("__type", "s32");
-                        var.add_text("0".into()).unwrap();
-                        step.add_child(var).unwrap();
-
-                        let mut player_id = XMLElement::new("player_id");
-                        player_id.add_attribute("__type", "s32");
-                        player_id.add_text("0".into()).unwrap();
-                        step.add_child(player_id).unwrap();
+                        });
+                        add_s32_element(&mut step, "var", 0);
+                        add_s32_element(&mut step, "player_id", 0);
 
                         let mut long_point = XMLElement::new("long_point");
                         for waypoint in waypoints {
                             let mut point = XMLElement::new("point");
-                            let mut point_time = XMLElement::new("point_time");
-                            point_time.add_attribute("__type", "s32");
-                            point_time.add_text(waypoint.point_time.to_string().into()).unwrap();
-                            point.add_child(point_time).unwrap();
-
-                            let mut pos_left = XMLElement::new("pos_left");
-                            pos_left.add_attribute("__type", "s32");
-                            pos_left.add_text(waypoint.pos_left.to_string().into()).unwrap();
-                            point.add_child(pos_left).unwrap();
-
-                            let mut pos_right = XMLElement::new("pos_right");
-                            pos_right.add_attribute("__type", "s32");
-                            pos_right.add_text(waypoint.pos_right.to_string().into()).unwrap();
-                            point.add_child(pos_right).unwrap();
-
+                            add_s32_element(&mut point, "point_time", waypoint.point_time);
+                            add_s32_element(&mut point, "pos_left", waypoint.pos_left);
+                            add_s32_element(&mut point, "pos_right", waypoint.pos_right);
                             long_point.add_child(point).unwrap();
                         }
                         step.add_child(long_point).unwrap();
