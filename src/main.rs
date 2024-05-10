@@ -138,6 +138,7 @@ enum LongPoint {
         point_time: u32,
         pos_left: u32,
         pos_right: u32,
+        is_final: bool
     },
 }
 
@@ -453,6 +454,7 @@ fn main() {
                                                 pos_left: *end_lane as u32 * 4096,
                                                 pos_right: (*end_lane + end_width) as u32
                                                     * 4096,
+                                                is_final: true
                                             });
                                             end_time = measure_tick_to_ms(
                                                 measure_num as u32,
@@ -477,6 +479,7 @@ fn main() {
                                                 pos_left: *point_lane as u32 * 4096,
                                                 pos_right: (*point_lane + point_width) as u32
                                                     * 4096,
+                                                is_final: false,
                                             });
                                         }
                                     }
@@ -579,6 +582,7 @@ fn main() {
                                                         pos_right: (*end_lane + end_width)
                                                             as u32
                                                             * 4096,
+                                                        is_final: true
                                                     });
                                                     end_time = measure_tick_to_ms(
                                                         end_measure_num as u32,
@@ -604,6 +608,7 @@ fn main() {
                                                         pos_right: (*point_lane + point_width)
                                                             as u32
                                                             * 4096,
+                                                        is_final: false
                                                     });
                                                 }
                                             }
@@ -705,16 +710,22 @@ fn main() {
                                     point_time,
                                     pos_left,
                                     pos_right,
+                                    is_final
                                 } => {
                                     add_s64_element(&mut point, "point_time", point_time.into());
                                     add_s32_element(&mut point, "pos_left", last_left);
                                     add_s32_element(&mut point, "pos_right", last_right);
-                                    if pos_right > last_right {
-                                        add_s32_element(&mut point, "pos_lend", (pos_left + pos_right) / 2);
-                                        add_s32_element(&mut point, "pos_rend", pos_right);
+                                    if is_final {
+                                        if pos_right > last_right {
+                                            add_s32_element(&mut point, "pos_lend", (pos_left + pos_right) / 2);
+                                            add_s32_element(&mut point, "pos_rend", pos_right);
+                                        } else {
+                                            add_s32_element(&mut point, "pos_lend", pos_left);
+                                            add_s32_element(&mut point, "pos_rend", (pos_left + pos_right) / 2);
+                                        }
                                     } else {
                                         add_s32_element(&mut point, "pos_lend", pos_left);
-                                        add_s32_element(&mut point, "pos_rend", (pos_left + pos_right) / 2);
+                                        add_s32_element(&mut point, "pos_rend", pos_right);
                                     }
                                     last_left = pos_left;
                                     last_right = pos_right;
