@@ -156,11 +156,11 @@ impl Measure {
 }
 
 fn measure_tick_to_ms(measure: u32, tick: u32, bpm: u32) -> u32 {
-    let ms_per_beat = 60000 / bpm;
-    let ms_per_measure = ms_per_beat * 4;
-    let ticks_per_measure = 192;
-    let ms_per_tick = ms_per_measure as f32 / ticks_per_measure as f32;
-    (measure as f32 * ms_per_measure as f32 + tick as f32 * ms_per_tick) as u32
+    let ms_per_beat = 60000_f32 / bpm as f32;
+    let ms_per_measure = ms_per_beat * 4_f32;
+    let ticks_per_measure = 192_f32;
+    let ms_per_tick = ms_per_measure / ticks_per_measure;
+    (measure as f32 * ms_per_measure + tick as f32 * ms_per_tick) as u32
 }
 
 fn ms_to_dt(ms: u32, bpm: u32) -> u32 {
