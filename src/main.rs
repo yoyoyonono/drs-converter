@@ -736,7 +736,6 @@ fn main() {
                                     last_left = pos_left;
                                     last_right = pos_right;
                                 }
-                                _ => {}
                             }
                             long_point.add_child(point).unwrap();
                         }
