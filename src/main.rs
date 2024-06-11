@@ -214,6 +214,310 @@ fn xml_boilerplate(bpm: u32) -> XMLElement {
     xml
 }
 
+fn find_end(
+    measure: &Measure,
+    tick_num: usize,
+    id: &u8,
+    waypoints: &mut Vec<LongPoint>,
+    bpm: u32,
+    measure_num: usize,
+    time: u32,
+) -> u32 {
+    for (end_tick_num, end_tick) in measure.ticks.iter().enumerate().skip(tick_num) {
+        for possible_end_event in end_tick {
+            match possible_end_event {
+                NoteEvent::SlideEnd {
+                    id: end_id,
+                    lane: end_lane,
+                    width: end_width,
+                } => {
+                    if end_id == id {
+                        waypoints.push(LongPoint::Normal {
+                            point_time: measure_tick_to_ms(
+                                measure_num as u32,
+                                end_tick_num as u32,
+                                bpm,
+                            ),
+                            pos_left: *end_lane as u32 * 4096,
+                            pos_right: (*end_lane + end_width) as u32 * 4096,
+                        });
+                        return measure_tick_to_ms(measure_num as u32, end_tick_num as u32, bpm);
+                    }
+                }
+                NoteEvent::SlideWaypoint {
+                    id: point_id,
+                    lane,
+                    width,
+                } => {
+                    if id == point_id {
+                        waypoints.push(LongPoint::Normal {
+                            point_time: measure_tick_to_ms(
+                                measure_num as u32,
+                                end_tick_num as u32,
+                                bpm,
+                            ),
+                            pos_left: *lane as u32 * 4096,
+                            pos_right: (*lane + width) as u32 * 4096,
+                        });
+                    }
+                }
+                NoteEvent::SimpleSkidEnd {
+                    id: end_id,
+                    lane: end_lane,
+                    width: end_width,
+                } => {
+                    if id == end_id {
+                        waypoints.push(LongPoint::SkidSimple {
+                            point_time: measure_tick_to_ms(
+                                measure_num as u32,
+                                end_tick_num as u32,
+                                bpm,
+                            ),
+                            pos_left: *end_lane as u32 * 4096,
+                            pos_right: (*end_lane + end_width) as u32 * 4096,
+                            is_final: true,
+                        });
+                        return measure_tick_to_ms(measure_num as u32, end_tick_num as u32, bpm);
+                    }
+                }
+                NoteEvent::SimpleSkidWaypoint {
+                    id: point_id,
+                    lane: point_lane,
+                    width: point_width,
+                } => {
+                    if id == point_id {
+                        waypoints.push(LongPoint::SkidSimple {
+                            point_time: measure_tick_to_ms(
+                                measure_num as u32,
+                                end_tick_num as u32,
+                                bpm,
+                            ),
+                            pos_left: *point_lane as u32 * 4096,
+                            pos_right: (*point_lane + point_width) as u32 * 4096,
+                            is_final: false,
+                        });
+                    }
+                }
+                NoteEvent::ComplexSkidEnd {
+                    id: end_id,
+                    lane_start,
+                    width_start,
+                    lane_end,
+                    width_end,
+                } => {
+                    if id == end_id {
+                        waypoints.push(LongPoint::SkidComplex {
+                            point_time: measure_tick_to_ms(
+                                measure_num as u32,
+                                end_tick_num as u32,
+                                bpm,
+                            ),
+                            pos_left_start: *lane_start as u32 * 4096,
+                            pos_right_start: (*lane_start + width_start) as u32 * 4096,
+                            pos_left_end: *lane_end as u32 * 4096,
+                            pos_right_end: (*lane_end + width_end) as u32 * 4096,
+                        });
+                        return measure_tick_to_ms(measure_num as u32, end_tick_num as u32, bpm);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    time
+}
+
+fn handle_event(
+    event: &NoteEvent,
+    measure_num: usize,
+    tick_num: usize,
+    bpm: u32,
+    sequence_data: &mut XMLElement,
+    measure: &Measure,
+    measures: &Vec<Measure>,
+) {
+    match event {
+        NoteEvent::LeftStep { lane, width } | NoteEvent::RightStep { lane, width } => {
+            let mut step = XMLElement::new("step");
+            let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
+
+            add_s64_element(&mut step, "stime_ms", time.into());
+            add_s64_element(&mut step, "etime_ms", time.into());
+            add_s32_element(&mut step, "stime_dt", ms_to_dt(time, bpm).into());
+            add_s32_element(&mut step, "etime_dt", ms_to_dt(time, bpm).into());
+            add_s32_element(&mut step, "category", 0);
+            add_s32_element(&mut step, "pos_left", (*lane as u32 * 4096).into());
+            add_s32_element(
+                &mut step,
+                "pos_right",
+                ((lane + width) as u32 * 4096).into(),
+            );
+            add_s32_element(
+                &mut step,
+                "kind",
+                match event {
+                    NoteEvent::LeftStep { .. } => 1,
+                    NoteEvent::RightStep { .. } => 2,
+                    _ => panic!(),
+                },
+            );
+            add_s32_element(&mut step, "var", 0);
+            add_s32_element(&mut step, "player_id", 0);
+
+            sequence_data.add_child(step).unwrap();
+        }
+        NoteEvent::Jump | NoteEvent::Down => {
+            let mut step = XMLElement::new("step");
+            let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
+
+            add_s64_element(&mut step, "stime_ms", time.into());
+            add_s64_element(&mut step, "etime_ms", time.into());
+            add_s32_element(&mut step, "stime_dt", ms_to_dt(time, bpm).into());
+            add_s32_element(&mut step, "etime_dt", ms_to_dt(time, bpm).into());
+            add_s32_element(&mut step, "category", 0);
+            add_s32_element(&mut step, "pos_left", 0);
+            add_s32_element(&mut step, "pos_right", 65536);
+            add_s32_element(
+                &mut step,
+                "kind",
+                match event {
+                    NoteEvent::Down => 3,
+                    NoteEvent::Jump => 4,
+                    _ => panic!(),
+                },
+            );
+            add_s32_element(&mut step, "var", 0);
+            add_s32_element(&mut step, "player_id", 4);
+
+            sequence_data.add_child(step).unwrap();
+        }
+        NoteEvent::LeftHoldStart { id, lane, width }
+        | NoteEvent::RightHoldStart { id, lane, width } => {
+            let mut step = XMLElement::new("step");
+            let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
+            let mut end_time;
+
+            let mut waypoints = Vec::<LongPoint>::new();
+
+            end_time = find_end(
+                measure,
+                tick_num,
+                id,
+                &mut waypoints,
+                bpm,
+                measure_num,
+                time,
+            );
+
+            if end_time == time {
+                for (end_measure_num, end_measure) in
+                    measures.iter().enumerate().skip(measure_num + 1)
+                {
+                    end_time = find_end(
+                        end_measure,
+                        0,
+                        id,
+                        &mut waypoints,
+                        bpm,
+                        end_measure_num,
+                        time,
+                    );
+                    if end_time != time {
+                        break;
+                    }
+                }
+            }
+
+            add_s64_element(&mut step, "stime_ms", time.into());
+            add_s64_element(&mut step, "etime_ms", end_time.into());
+            add_s32_element(&mut step, "stime_dt", ms_to_dt(time, bpm).into());
+            add_s32_element(&mut step, "etime_dt", ms_to_dt(end_time, bpm).into());
+            add_s32_element(&mut step, "category", 1);
+            add_s32_element(&mut step, "pos_left", (*lane as u32 * 4096).into());
+            add_s32_element(
+                &mut step,
+                "pos_right",
+                ((lane + width) as u32 * 4096).into(),
+            );
+            add_s32_element(
+                &mut step,
+                "kind",
+                match event {
+                    NoteEvent::LeftHoldStart { .. } => 1,
+                    NoteEvent::RightHoldStart { .. } => 2,
+                    _ => panic!(),
+                },
+            );
+            add_s32_element(&mut step, "var", 0);
+            add_s32_element(&mut step, "player_id", 0);
+
+            let mut long_point = XMLElement::new("long_point");
+
+            let mut last_left = *lane as u32 * 4096;
+            let mut last_right = (*lane + width) as u32 * 4096;
+
+            for waypoint in waypoints {
+                let mut point = XMLElement::new("point");
+                match waypoint {
+                    LongPoint::Normal {
+                        point_time,
+                        pos_left,
+                        pos_right,
+                    } => {
+                        add_s64_element(&mut point, "point_time", point_time.into());
+                        add_s32_element(&mut point, "pos_left", pos_left);
+                        add_s32_element(&mut point, "pos_right", pos_right);
+                    }
+                    LongPoint::SkidComplex {
+                        point_time,
+                        pos_left_start,
+                        pos_right_start,
+                        pos_left_end,
+                        pos_right_end,
+                    } => {
+                        add_s64_element(&mut point, "point_time", point_time.into());
+                        add_s32_element(&mut point, "pos_left", pos_left_start);
+                        add_s32_element(&mut point, "pos_right", pos_right_start);
+                        add_s32_element(&mut point, "pos_lend", pos_left_end);
+                        add_s32_element(&mut point, "pos_rend", pos_right_end);
+                        last_left = pos_left_end;
+                        last_right = pos_right_end;
+                    }
+                    LongPoint::SkidSimple {
+                        point_time,
+                        pos_left,
+                        pos_right,
+                        is_final,
+                    } => {
+                        add_s64_element(&mut point, "point_time", point_time.into());
+                        add_s32_element(&mut point, "pos_left", last_left);
+                        add_s32_element(&mut point, "pos_right", last_right);
+                        if is_final {
+                            if pos_right > last_right {
+                                add_s32_element(&mut point, "pos_lend", (pos_left + pos_right) / 2);
+                                add_s32_element(&mut point, "pos_rend", pos_right);
+                            } else {
+                                add_s32_element(&mut point, "pos_lend", pos_left);
+                                add_s32_element(&mut point, "pos_rend", (pos_left + pos_right) / 2);
+                            }
+                        } else {
+                            add_s32_element(&mut point, "pos_lend", pos_left);
+                            add_s32_element(&mut point, "pos_rend", pos_right);
+                        }
+                        last_left = pos_left;
+                        last_right = pos_right;
+                    }
+                }
+                long_point.add_child(point).unwrap();
+            }
+            step.add_child(long_point).unwrap();
+
+            sequence_data.add_child(step).unwrap();
+        }
+        _ => {}
+    }
+}
+
 fn main() {
     print!("\x1B[2J\x1B[1;1H");
     let input = std::fs::read_to_string("test.ssf").unwrap();
@@ -225,7 +529,7 @@ fn main() {
         let line_raw = input_lines.next().unwrap();
         if !line_raw.starts_with("#") {
             continue;
-        }
+      }
         let line = line_raw.strip_prefix("#").unwrap();
         if let Some((command, argument)) = line.split_once(" ") {
             match command {
@@ -330,421 +634,15 @@ fn main() {
                 measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm)
             );
             for event in tick {
-                match event {
-                    NoteEvent::LeftStep { lane, width } | NoteEvent::RightStep { lane, width } => {
-                        let mut step = XMLElement::new("step");
-                        let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
-
-                        add_s64_element(&mut step, "stime_ms", time.into());
-                        add_s64_element(&mut step, "etime_ms", time.into());
-                        add_s32_element(&mut step, "stime_dt", ms_to_dt(time, bpm).into());
-                        add_s32_element(&mut step, "etime_dt", ms_to_dt(time, bpm).into());
-                        add_s32_element(&mut step, "category", 0);
-                        add_s32_element(&mut step, "pos_left", (*lane as u32 * 4096).into());
-                        add_s32_element(
-                            &mut step,
-                            "pos_right",
-                            ((lane + width) as u32 * 4096).into(),
-                        );
-                        add_s32_element(
-                            &mut step,
-                            "kind",
-                            match event {
-                                NoteEvent::LeftStep { .. } => 1,
-                                NoteEvent::RightStep { .. } => 2,
-                                _ => panic!(),
-                            },
-                        );
-                        add_s32_element(&mut step, "var", 0);
-                        add_s32_element(&mut step, "player_id", 0);
-
-                        sequence_data.add_child(step).unwrap();
-                    }
-                    NoteEvent::Jump | NoteEvent::Down => {
-                        let mut step = XMLElement::new("step");
-                        let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
-
-                        add_s64_element(&mut step, "stime_ms", time.into());
-                        add_s64_element(&mut step, "etime_ms", time.into());
-                        add_s32_element(&mut step, "stime_dt", ms_to_dt(time, bpm).into());
-                        add_s32_element(&mut step, "etime_dt", ms_to_dt(time, bpm).into());
-                        add_s32_element(&mut step, "category", 0);
-                        add_s32_element(&mut step, "pos_left", 0);
-                        add_s32_element(&mut step, "pos_right", 65536);
-                        add_s32_element(
-                            &mut step,
-                            "kind",
-                            match event {
-                                NoteEvent::Down => 3,
-                                NoteEvent::Jump => 4,
-                                _ => panic!(),
-                            },
-                        );
-                        add_s32_element(&mut step, "var", 0);
-                        add_s32_element(&mut step, "player_id", 4);
-
-                        sequence_data.add_child(step).unwrap();
-                    }
-                    NoteEvent::LeftHoldStart { id, lane, width }
-                    | NoteEvent::RightHoldStart { id, lane, width } => {
-                        let mut step = XMLElement::new("step");
-                        let time = measure_tick_to_ms(measure_num as u32, tick_num as u32, bpm);
-                        let mut end_time = time;
-
-                        let mut waypoints = Vec::<LongPoint>::new();
-
-                        // find end of hold in this measure and all future measures
-                        'outer: for (end_tick_num, end_tick) in
-                            measure.ticks.iter().enumerate().skip(tick_num)
-                        {
-                            for possible_end_event in end_tick {
-                                match possible_end_event {
-                                    NoteEvent::SlideEnd {
-                                        id: end_id,
-                                        lane: end_lane,
-                                        width: end_width,
-                                    } => {
-                                        if end_id == id {
-                                            waypoints.push(LongPoint::Normal {
-                                                point_time: measure_tick_to_ms(
-                                                    measure_num as u32,
-                                                    end_tick_num as u32,
-                                                    bpm,
-                                                ),
-                                                pos_left: *end_lane as u32 * 4096,
-                                                pos_right: (*end_lane + end_width) as u32 * 4096,
-                                            });
-                                            end_time = measure_tick_to_ms(
-                                                measure_num as u32,
-                                                end_tick_num as u32,
-                                                bpm,
-                                            );
-                                            break 'outer;
-                                        }
-                                    }
-                                    NoteEvent::SlideWaypoint {
-                                        id: point_id,
-                                        lane,
-                                        width,
-                                    } => {
-                                        if id == point_id {
-                                            waypoints.push(LongPoint::Normal {
-                                                point_time: measure_tick_to_ms(
-                                                    measure_num as u32,
-                                                    end_tick_num as u32,
-                                                    bpm,
-                                                ),
-                                                pos_left: *lane as u32 * 4096,
-                                                pos_right: (*lane + width) as u32 * 4096,
-                                            });
-                                        }
-                                    }
-                                    NoteEvent::SimpleSkidEnd {
-                                        id: end_id,
-                                        lane: end_lane,
-                                        width: end_width,
-                                    } => {
-                                        if id == end_id {
-                                            waypoints.push(LongPoint::SkidSimple {
-                                                point_time: measure_tick_to_ms(
-                                                    measure_num as u32,
-                                                    end_tick_num as u32,
-                                                    bpm,
-                                                ),
-                                                pos_left: *end_lane as u32 * 4096,
-                                                pos_right: (*end_lane + end_width) as u32 * 4096,
-                                                is_final: true,
-                                            });
-                                            end_time = measure_tick_to_ms(
-                                                measure_num as u32,
-                                                end_tick_num as u32,
-                                                bpm,
-                                            );
-                                            break 'outer;
-                                        }
-                                    }
-                                    NoteEvent::SimpleSkidWaypoint {
-                                        id: point_id,
-                                        lane: point_lane,
-                                        width: point_width,
-                                    } => {
-                                        if id == point_id {
-                                            waypoints.push(LongPoint::SkidSimple {
-                                                point_time: measure_tick_to_ms(
-                                                    measure_num as u32,
-                                                    end_tick_num as u32,
-                                                    bpm,
-                                                ),
-                                                pos_left: *point_lane as u32 * 4096,
-                                                pos_right: (*point_lane + point_width) as u32
-                                                    * 4096,
-                                                is_final: false,
-                                            });
-                                        }
-                                    }
-                                    NoteEvent::ComplexSkidEnd {
-                                        id: end_id,
-                                        lane_start,
-                                        width_start,
-                                        lane_end,
-                                        width_end,
-                                    } => {
-                                        if id == end_id {
-                                            waypoints.push(LongPoint::SkidComplex {
-                                                point_time: measure_tick_to_ms(
-                                                    measure_num as u32,
-                                                    end_tick_num as u32,
-                                                    bpm,
-                                                ),
-                                                pos_left_start: *lane_start as u32 * 4096,
-                                                pos_right_start: (*lane_start + width_start) as u32
-                                                    * 4096,
-                                                pos_left_end: *lane_end as u32 * 4096,
-                                                pos_right_end: (*lane_end + width_end) as u32
-                                                    * 4096,
-                                            });
-                                            end_time = measure_tick_to_ms(
-                                                measure_num as u32,
-                                                end_tick_num as u32,
-                                                bpm,
-                                            );
-                                            break 'outer;
-                                        }
-                                    }
-                                    _ => {}
-                                }
-                            }
-                        }
-
-                        if end_time == time {
-                            'outer: for (end_measure_num, end_measure) in
-                                measures.iter().enumerate().skip(measure_num + 1)
-                            {
-                                for (end_tick_num, end_tick) in end_measure.ticks.iter().enumerate()
-                                {
-                                    for possible_end_event in end_tick {
-                                        match possible_end_event {
-                                            NoteEvent::SlideEnd {
-                                                id: end_id,
-                                                lane: end_lane,
-                                                width: end_width,
-                                            } => {
-                                                if end_id == id {
-                                                    waypoints.push(LongPoint::Normal {
-                                                        point_time: measure_tick_to_ms(
-                                                            end_measure_num as u32,
-                                                            end_tick_num as u32,
-                                                            bpm,
-                                                        ),
-                                                        pos_left: *end_lane as u32 * 4096,
-                                                        pos_right: (*end_lane + end_width) as u32
-                                                            * 4096,
-                                                    });
-                                                    end_time = measure_tick_to_ms(
-                                                        end_measure_num as u32,
-                                                        end_tick_num as u32,
-                                                        bpm,
-                                                    );
-                                                    break 'outer;
-                                                }
-                                            }
-                                            NoteEvent::SlideWaypoint {
-                                                id: point_id,
-                                                lane,
-                                                width,
-                                            } => {
-                                                if id == point_id {
-                                                    waypoints.push(LongPoint::Normal {
-                                                        point_time: measure_tick_to_ms(
-                                                            end_measure_num as u32,
-                                                            end_tick_num as u32,
-                                                            bpm,
-                                                        ),
-                                                        pos_left: *lane as u32 * 4096,
-                                                        pos_right: (*lane + width) as u32 * 4096,
-                                                    });
-                                                }
-                                            }
-                                            NoteEvent::SimpleSkidEnd {
-                                                id: end_id,
-                                                lane: end_lane,
-                                                width: end_width,
-                                            } => {
-                                                if id == end_id {
-                                                    waypoints.push(LongPoint::SkidSimple {
-                                                        point_time: measure_tick_to_ms(
-                                                            end_measure_num as u32,
-                                                            end_tick_num as u32,
-                                                            bpm,
-                                                        ),
-                                                        pos_left: *end_lane as u32 * 4096,
-                                                        pos_right: (*end_lane + end_width) as u32
-                                                            * 4096,
-                                                        is_final: true,
-                                                    });
-                                                    end_time = measure_tick_to_ms(
-                                                        end_measure_num as u32,
-                                                        end_tick_num as u32,
-                                                        bpm,
-                                                    );
-                                                    break 'outer;
-                                                }
-                                            }
-                                            NoteEvent::SimpleSkidWaypoint {
-                                                id: point_id,
-                                                lane: point_lane,
-                                                width: point_width,
-                                            } => {
-                                                if id == point_id {
-                                                    waypoints.push(LongPoint::SkidSimple {
-                                                        point_time: measure_tick_to_ms(
-                                                            end_measure_num as u32,
-                                                            end_tick_num as u32,
-                                                            bpm,
-                                                        ),
-                                                        pos_left: *point_lane as u32 * 4096,
-                                                        pos_right: (*point_lane + point_width)
-                                                            as u32
-                                                            * 4096,
-                                                        is_final: false,
-                                                    });
-                                                }
-                                            }
-                                            NoteEvent::ComplexSkidEnd {
-                                                id: end_id,
-                                                lane_start,
-                                                width_start,
-                                                lane_end,
-                                                width_end,
-                                            } => {
-                                                if id == end_id {
-                                                    waypoints.push(LongPoint::SkidComplex {
-                                                        point_time: measure_tick_to_ms(
-                                                            measure_num as u32,
-                                                            end_tick_num as u32,
-                                                            bpm,
-                                                        ),
-                                                        pos_left_start: *lane_start as u32 * 4096,
-                                                        pos_right_start: (*lane_start + width_start)
-                                                            as u32
-                                                            * 4096,
-                                                        pos_left_end: *lane_end as u32 * 4096,
-                                                        pos_right_end: (*lane_end + width_end)
-                                                            as u32
-                                                            * 4096,
-                                                    });
-                                                    end_time = measure_tick_to_ms(
-                                                        measure_num as u32,
-                                                        end_tick_num as u32,
-                                                        bpm,
-                                                    );
-                                                    break 'outer;
-                                                }
-                                            }
-
-                                            _ => {}
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        add_s64_element(&mut step, "stime_ms", time.into());
-                        add_s64_element(&mut step, "etime_ms", end_time.into());
-                        add_s32_element(&mut step, "stime_dt", ms_to_dt(time, bpm).into());
-                        add_s32_element(&mut step, "etime_dt", ms_to_dt(end_time, bpm).into());
-                        add_s32_element(&mut step, "category", 1);
-                        add_s32_element(&mut step, "pos_left", (*lane as u32 * 4096).into());
-                        add_s32_element(
-                            &mut step,
-                            "pos_right",
-                            ((lane + width) as u32 * 4096).into(),
-                        );
-                        add_s32_element(
-                            &mut step,
-                            "kind",
-                            match event {
-                                NoteEvent::LeftHoldStart { .. } => 1,
-                                NoteEvent::RightHoldStart { .. } => 2,
-                                _ => panic!(),
-                            },
-                        );
-                        add_s32_element(&mut step, "var", 0);
-                        add_s32_element(&mut step, "player_id", 0);
-
-                        let mut long_point = XMLElement::new("long_point");
-
-                        let mut last_left = *lane as u32 * 4096;
-                        let mut last_right = (*lane + width) as u32 * 4096;
-
-                        for waypoint in waypoints {
-                            let mut point = XMLElement::new("point");
-                            match waypoint {
-                                LongPoint::Normal {
-                                    point_time,
-                                    pos_left,
-                                    pos_right,
-                                } => {
-                                    add_s64_element(&mut point, "point_time", point_time.into());
-                                    add_s32_element(&mut point, "pos_left", pos_left);
-                                    add_s32_element(&mut point, "pos_right", pos_right);
-                                }
-                                LongPoint::SkidComplex {
-                                    point_time,
-                                    pos_left_start,
-                                    pos_right_start,
-                                    pos_left_end,
-                                    pos_right_end,
-                                } => {
-                                    add_s64_element(&mut point, "point_time", point_time.into());
-                                    add_s32_element(&mut point, "pos_left", pos_left_start);
-                                    add_s32_element(&mut point, "pos_right", pos_right_start);
-                                    add_s32_element(&mut point, "pos_lend", pos_left_end);
-                                    add_s32_element(&mut point, "pos_rend", pos_right_end);
-                                    last_left = pos_left_end;
-                                    last_right = pos_right_end;
-                                }
-                                LongPoint::SkidSimple {
-                                    point_time,
-                                    pos_left,
-                                    pos_right,
-                                    is_final,
-                                } => {
-                                    add_s64_element(&mut point, "point_time", point_time.into());
-                                    add_s32_element(&mut point, "pos_left", last_left);
-                                    add_s32_element(&mut point, "pos_right", last_right);
-                                    if is_final {
-                                        if pos_right > last_right {
-                                            add_s32_element(
-                                                &mut point,
-                                                "pos_lend",
-                                                (pos_left + pos_right) / 2,
-                                            );
-                                            add_s32_element(&mut point, "pos_rend", pos_right);
-                                        } else {
-                                            add_s32_element(&mut point, "pos_lend", pos_left);
-                                            add_s32_element(
-                                                &mut point,
-                                                "pos_rend",
-                                                (pos_left + pos_right) / 2,
-                                            );
-                                        }
-                                    } else {
-                                        add_s32_element(&mut point, "pos_lend", pos_left);
-                                        add_s32_element(&mut point, "pos_rend", pos_right);
-                                    }
-                                    last_left = pos_left;
-                                    last_right = pos_right;
-                                }
-                            }
-                            long_point.add_child(point).unwrap();
-                        }
-                        step.add_child(long_point).unwrap();
-
-                        sequence_data.add_child(step).unwrap();
-                    }
-                    _ => {}
-                }
+                handle_event(
+                    event,
+                    measure_num,
+                    tick_num,
+                    bpm,
+                    &mut sequence_data,
+                    measure,
+                    &measures,
+                );
             }
         }
     }
